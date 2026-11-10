@@ -59,6 +59,17 @@ resource "azurerm_network_security_group" "web" {
     source_address_prefix      = "AzureLoadBalancer"
     destination_address_prefix = "*"
   }
+  security_rule {
+    name                       = "Allow-SSH-From-Admin"
+    priority                   = 120
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "22"
+    source_address_prefix      = azurerm_subnet.admin.address_prefixes[0]
+    destination_address_prefix = "*"
+  }
   # Override Azure's default AllowVnetInBound and AllowAzureLoadBalancerInBound.
   security_rule {
     name                       = "Deny-All-Inbound"
@@ -83,6 +94,18 @@ resource "azurerm_network_security_group" "admin" {
   location            = azurerm_resource_group.rg_nimbus.location
   resource_group_name = azurerm_resource_group.rg_nimbus.name
   tags                = azurerm_resource_group.rg_nimbus.tags
+
+  security_rule {
+    name                       = "Allow-SSH-From-Operator"
+    priority                   = 100
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "22"
+    source_address_prefix      = var.allowed_ssh_cidr
+    destination_address_prefix = "*"
+  }
 
   security_rule {
     name                       = "Deny-All-Inbound"

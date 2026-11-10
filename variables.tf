@@ -44,3 +44,13 @@ variable "ssh_public_key_path" {
   type        = string
   description = "Chemin local de la clé publique SSH (.pub), jamais de la clé privée."
 }
+
+variable "allowed_ssh_cidr" {
+  type        = string
+  description = "Votre IPv4 publique autorisée en SSH sur la jumpbox, au format a.b.c.d/32."
+
+  validation {
+    condition     = can(cidrnetmask(var.allowed_ssh_cidr)) && endswith(var.allowed_ssh_cidr, "/32")
+    error_message = "Indiquez une seule IPv4 au format a.b.c.d/32, jamais un réseau ouvert à tous."
+  }
+}

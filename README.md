@@ -1,4 +1,4 @@
-# NimbusShop — OpenTofu Azure, niveau 1
+# NimbusShop — OpenTofu Azure, niveaux 1 et 2
 
 Requires OpenTofu >= 1.6.0 and < 2.0.0.
 
@@ -33,7 +33,8 @@ can force replacements. Never apply unexpected deletions without investigating.
 - `main.tf`: resource group, network, subnet NSGs, two private NICs and web VMs.
 - `cloud-init.yaml`: nginx, NimbusShop page with hostname, and `/sante` health page.
 - `load-balancer.tf`: public Standard LB, backend pool, HTTP probe, HTTP rule and egress.
-- `outputs.tf`: public site URL.
+- `jumpbox.tf`: private admin-subnet NIC, public IP and SSH-only jumpbox VM.
+- `outputs.tf`: public site URL, jumpbox public IP and web private IPs.
 
 With `numgroupe = 7`, the VNet is `10.7.0.0/16`, web subnet is
 `10.7.1.0/24`, and admin subnet is `10.7.2.0/24`.
@@ -46,24 +47,26 @@ Web VMs -> explicit LB outbound rule -> Internet
 ```
 
 Both VMs use `count = 2`, the same image, size and cloud-init, with SSH-key-only
-authentication and no public IP. The admin subnet is reserved for level 2.
+authentication and no public IP. A third VM, the jumpbox, uses the admin subnet
+and is the only VM with a public IP.
 
-## Subnet security (level 1)
+## Subnet security
 
 Each subnet has its own associated NSG:
 
 | Subnet | Allowed inbound traffic | Other inbound traffic |
 | --- | --- | --- |
-| Web | TCP/80 from `Internet` and `AzureLoadBalancer` | Denied |
-| Admin | None yet | Denied |
+| Web | TCP/80 from `Internet` and `AzureLoadBalancer`; TCP/22 from admin subnet | Denied |
+| Admin | TCP/22 from `allowed_ssh_cidr` only | Denied |
 
 Rules are evaluated from lowest priority number first: HTTP at 100, health
-probe at 110, then deny-all at 4096. The explicit deny overrides Azure's default
+probe at 110, web SSH from admin at 120, then deny-all at 4096. Admin SSH uses
+priority 100 in its own NSG. The explicit deny overrides Azure's default
 inbound VNet and load-balancer allowances. NSGs are stateful: replies to allowed
 connections do not require a separate inbound allow rule.
 
-SSH is disabled at the network level for now. Level 2 will allow SSH to the
-jumpbox only from your public IP, and to web VMs only from the admin subnet.
+SSH to the jumpbox is restricted to your current public IPv4 `/32`; SSH to
+web VMs is restricted to the admin subnet (`10.7.2.0/24` for group 7).
 NSG outbound rules are unchanged. An explicit load-balancer outbound rule
 provides Internet egress for both web VMs without assigning them public IPs.
 
@@ -114,9 +117,76 @@ wait until its health probe succeeds again. This manual stop is only the
 assignment's failure simulation; infrastructure creation remains code-only.
 
 Deployment is reported complete by the user; live HTTP and failover tests have
-not been independently verified here. Levels 2 and 3 are not implemented.
+not been independently verified here. Level 2 is configured but not deployed
+or tested here. Level 3 is not implemented.
+
+## Level 2: SSH through the jumpbox
+
+Add your current public IPv4 in the ignored `terraform.tfvars`:
+
+```hcl
+allowed_ssh_cidr = "203.0.113.10/32" # Replace with YOUR public IPv4, not this example.
+```
+
+The variable accepts only a valid IPv4 `/32`, not `0.0.0.0/0` or an entire
+subnet. If your Internet connection or VPN changes public IP, update the value
+and apply again. The address is your Internet-facing IP, not your LAN IP.
+
+Review and apply the plan. For an unchanged level-1 deployment, expect three
+new resources (jumpbox public IP, NIC and VM), NSG rule updates and outputs;
+existing web VMs should not need replacement for level 2 alone.
+
+```sh
+tofu fmt -check
+tofu validate
+tofu plan
+tofu apply
+tofu output jumpbox_public_ip
+tofu output web_private_ips
+```
+
+Use the private key corresponding to `ssh_public_key_path`, locally only.
+For a custom key, load it into your local SSH agent so both the proxy and target
+connections can authenticate:
+
+```sh
+eval "$(ssh-agent -s)"
+ssh-add ~/.ssh/id_ed25519
+```
+
+Adjust the key path and replace the placeholders below with the outputs.
+Replace `azureuser` if you configured a different `admin_username`:
+
+```text
+ssh azureuser@JUMPBOX_PUBLIC_IP
+ssh -J azureuser@JUMPBOX_PUBLIC_IP azureuser@WEB_PRIVATE_IP
+```
+
+Repeat `ssh -J` for both web IPs. On each web VM, check:
+
+```sh
+hostname
+cloud-init status --wait
+curl --fail http://localhost/sante
+```
+
+The health page must return `OK-nimbus`. Private keys stay on your computer;
+do not copy them to the jumpbox or enable agent forwarding (`ssh -A`).
+ProxyJump tunnels through the jumpbox without exposing your private key there.
+Verify SSH host-key fingerprints before accepting new hosts.
+
+If SSH times out, check your current public IPv4 against `allowed_ssh_cidr`,
+wait for VM provisioning to finish, and confirm you used the outputs' correct
+public/private addresses. Password authentication is disabled on all VMs.
 
 ## State, secrets and cleanup
+
+The SSH CIDR validation has a local regression test (Python 3 and OpenTofu
+only, no Azure credentials or resources required):
+
+```sh
+python3 tests/test_ssh_cidr.py
+```
 
 State uses the default local backend; configure a shared backend before
 collaborating on infrastructure.
