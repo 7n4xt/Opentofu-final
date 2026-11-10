@@ -11,3 +11,7 @@ variable "region" {
   type    = string
   default = "spaincentral"
 }
+variable "projet" {
+  type        = string
+  description = "Nom du projet"
+}
