@@ -53,3 +53,21 @@ resource "azurerm_subnet_network_security_group_association" "web" {
   network_security_group_id = azurerm_network_security_group.web.id
 }
 
+resource "azurerm_linux_virtual_machine" "vm" {
+  name                  = "vm-nimbus-${var.binome}-1"
+  resource_group_name   = azurerm_resource_group.rg_nimbus.name
+  location              = azurerm_resource_group.rg_nimbus.location
+  size                  = var.taille_vm
+  admin_username        = "malek"
+  network_interface_ids = [azurerm_network_interface.web.id]
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "StandardSSD_LRS"
+  }
+  source_image_reference {
+    publisher = "Canonical"
+    offer     = "ubuntu-24_04-lts"
+    sku       = "server"
+    version   = "latest"
+  }
+}

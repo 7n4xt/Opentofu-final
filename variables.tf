@@ -15,3 +15,7 @@ variable "projet" {
   type        = string
   description = "Nom du projet"
 }
+variable "taille_vm" {
+  type    = string
+  default = "Standard_B2ats_v2"
+}
