@@ -7,10 +7,6 @@ variable "binome" {
   type        = string
   description = "Votre nom de binôme"
 }
-variable "numgroupe" {
-  type        = string
-  description = "Numéro du groupe"
-}
 variable "region" {
   type    = string
   default = "spaincentral"
