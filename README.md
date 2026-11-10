@@ -42,10 +42,18 @@ connections do not require a separate inbound allow rule.
 
 SSH is disabled at the network level for now. Level 2 will allow SSH to the
 jumpbox only from your public IP, and to web VMs only from the admin subnet.
-Outbound rules are unchanged; explicit Internet egress is still required.
+NSG outbound rules are unchanged. An explicit load-balancer outbound rule
+provides Internet egress for both web VMs without assigning them public IPs.
 
-Azure networking and two web VMs are configured. Load balancing and explicit
-outbound access are not configured yet, so this is not ready for deployment.
+Azure networking, two web VMs, and a Standard Load Balancer are configured.
+`load-balancer.tf` connects both private NICs to the backend pool, probes HTTP
+`/sante` on port 80, forwards public TCP/80 to backend TCP/80, and configures
+outbound SNAT through the load balancer's static public IP. VM creation waits
+for the outbound rule, backend associations, and web subnet NSG association so
+cloud-init can install nginx. The HTTP rule disables implicit outbound SNAT to
+use only the explicit outbound rule.
+
+Deployment and live failover have not been tested yet.
 State uses the default local backend; configure a shared backend before
 collaborating on infrastructure.
 Keep credentials and state out of version control. Commit `.terraform.lock.hcl`

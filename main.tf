@@ -103,6 +103,13 @@ resource "azurerm_subnet_network_security_group_association" "admin" {
 }
 
 resource "azurerm_linux_virtual_machine" "vm" {
+  # Cloud-init needs working Internet egress before installing nginx.
+  depends_on = [
+    azurerm_lb_outbound_rule.web,
+    azurerm_network_interface_backend_address_pool_association.web,
+    azurerm_subnet_network_security_group_association.web,
+  ]
+
   count                           = 2
   name                            = "vm-nimbus-${var.binome}-${count.index + 1}"
   resource_group_name             = azurerm_resource_group.rg_nimbus.name
