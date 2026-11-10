@@ -71,3 +71,15 @@ resource "azurerm_linux_virtual_machine" "vm" {
     version   = "latest"
   }
 }
+
+resource "azurerm_network_interface" "web" {
+  name                = "nic-web-${var.binome}-1"
+  location            = azurerm_resource_group.rg_nimbus.location
+  resource_group_name = azurerm_resource_group.rg_nimbus.name
+
+  ip_configuration {
+    name                          = "internal"
+    subnet_id                     = azurerm_subnet.web.id
+    private_ip_address_allocation = "Dynamic"
+  }
+}
