@@ -45,17 +45,29 @@ resource "azurerm_network_security_group" "web" {
     protocol                   = "Tcp"
     source_port_range          = "*"
     destination_port_range     = "80"
-    source_address_prefix      = "*"
+    source_address_prefix      = "Internet"
     destination_address_prefix = "*"
   }
   security_rule {
-    name                       = "Allow-SSH"
+    name                       = "Allow-LB-Probe"
     priority                   = 110
     direction                  = "Inbound"
     access                     = "Allow"
     protocol                   = "Tcp"
     source_port_range          = "*"
-    destination_port_range     = "22"
+    destination_port_range     = "80"
+    source_address_prefix      = "AzureLoadBalancer"
+    destination_address_prefix = "*"
+  }
+  # Override Azure's default AllowVnetInBound and AllowAzureLoadBalancerInBound.
+  security_rule {
+    name                       = "Deny-All-Inbound"
+    priority                   = 4096
+    direction                  = "Inbound"
+    access                     = "Deny"
+    protocol                   = "*"
+    source_port_range          = "*"
+    destination_port_range     = "*"
     source_address_prefix      = "*"
     destination_address_prefix = "*"
   }
@@ -64,6 +76,30 @@ resource "azurerm_network_security_group" "web" {
 resource "azurerm_subnet_network_security_group_association" "web" {
   subnet_id                 = azurerm_subnet.web.id
   network_security_group_id = azurerm_network_security_group.web.id
+}
+
+resource "azurerm_network_security_group" "admin" {
+  name                = "nsg-nimbus-${var.binome}-admin"
+  location            = azurerm_resource_group.rg_nimbus.location
+  resource_group_name = azurerm_resource_group.rg_nimbus.name
+  tags                = azurerm_resource_group.rg_nimbus.tags
+
+  security_rule {
+    name                       = "Deny-All-Inbound"
+    priority                   = 4096
+    direction                  = "Inbound"
+    access                     = "Deny"
+    protocol                   = "*"
+    source_port_range          = "*"
+    destination_port_range     = "*"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+}
+
+resource "azurerm_subnet_network_security_group_association" "admin" {
+  subnet_id                 = azurerm_subnet.admin.id
+  network_security_group_id = azurerm_network_security_group.admin.id
 }
 
 resource "azurerm_linux_virtual_machine" "vm" {

@@ -26,6 +26,24 @@ tofu plan
 Add provider requirements to `versions.tf`, infrastructure to `main.tf`, inputs
 to `variables.tf`, and outputs to `outputs.tf`.
 
+## Subnet security (level 1)
+
+Each subnet has its own associated NSG:
+
+| Subnet | Allowed inbound traffic | Other inbound traffic |
+| --- | --- | --- |
+| Web | TCP/80 from `Internet` and `AzureLoadBalancer` | Denied |
+| Admin | None yet | Denied |
+
+Rules are evaluated from lowest priority number first: HTTP at 100, health
+probe at 110, then deny-all at 4096. The explicit deny overrides Azure's default
+inbound VNet and load-balancer allowances. NSGs are stateful: replies to allowed
+connections do not require a separate inbound allow rule.
+
+SSH is disabled at the network level for now. Level 2 will allow SSH to the
+jumpbox only from your public IP, and to web VMs only from the admin subnet.
+Outbound rules are unchanged; explicit Internet egress is still required.
+
 Azure networking and two web VMs are configured. Load balancing and explicit
 outbound access are not configured yet, so this is not ready for deployment.
 State uses the default local backend; configure a shared backend before
