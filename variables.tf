@@ -19,3 +19,7 @@ variable "taille_vm" {
   type    = string
   default = "Standard_B2ats_v2"
 }
+variable "admin_ssh_public_key" {
+  type        = string
+  description = "Clé publique SSH pour l'utilisateur malek des VM web (jamais la clé privée)."
+}

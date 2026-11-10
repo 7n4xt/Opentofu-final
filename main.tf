@@ -46,6 +46,17 @@ resource "azurerm_network_security_group" "web" {
     source_address_prefix      = "*"
     destination_address_prefix = "*"
   }
+  security_rule {
+    name                       = "Allow-SSH"
+    priority                   = 110
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "22"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
 }
 
 resource "azurerm_subnet_network_security_group_association" "web" {
@@ -54,12 +65,21 @@ resource "azurerm_subnet_network_security_group_association" "web" {
 }
 
 resource "azurerm_linux_virtual_machine" "vm" {
-  name                  = "vm-nimbus-${var.binome}-1"
-  resource_group_name   = azurerm_resource_group.rg_nimbus.name
-  location              = azurerm_resource_group.rg_nimbus.location
-  size                  = var.taille_vm
-  admin_username        = "malek"
-  network_interface_ids = [azurerm_network_interface.web.id]
+  count                           = 2
+  name                            = "vm-nimbus-${var.binome}-${count.index + 1}"
+  resource_group_name             = azurerm_resource_group.rg_nimbus.name
+  location                        = azurerm_resource_group.rg_nimbus.location
+  size                            = var.taille_vm
+  admin_username                  = "malek"
+  network_interface_ids           = [azurerm_network_interface.web[count.index].id]
+  disable_password_authentication = true
+  custom_data                     = filebase64("${path.module}/cloud-init.yaml")
+
+  admin_ssh_key {
+    username   = "malek"
+    public_key = var.admin_ssh_public_key
+  }
+
   os_disk {
     caching              = "ReadWrite"
     storage_account_type = "StandardSSD_LRS"
@@ -73,7 +93,8 @@ resource "azurerm_linux_virtual_machine" "vm" {
 }
 
 resource "azurerm_network_interface" "web" {
-  name                = "nic-web-${var.binome}-1"
+  count               = 2
+  name                = "nic-web-${var.binome}-${count.index + 1}"
   location            = azurerm_resource_group.rg_nimbus.location
   resource_group_name = azurerm_resource_group.rg_nimbus.name
 

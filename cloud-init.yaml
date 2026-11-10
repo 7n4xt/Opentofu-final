@@ -1,0 +1,18 @@
+#cloud-config
+package_update: true
+packages:
+  - nginx
+
+write_files:
+  - path: /var/www/html/sante
+    owner: root:root
+    permissions: '0644'
+    content: |
+      OK-nimbus
+
+runcmd:
+  - |
+    set -eu
+    printf '<!doctype html>\n<html lang="fr"><head><meta charset="utf-8"><title>NimbusShop</title></head><body><h1>NimbusShop</h1><p>VM : %s</p></body></html>\n' "$(hostname)" > /var/www/html/index.html
+    nginx -t
+    systemctl enable --now nginx
