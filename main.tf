@@ -3,7 +3,7 @@ resource "azurerm_resource_group" "rg_nimbus" {
   name     = "rg-nimbus-${var.binome}"
   location = var.region
   tags = {
-    cpu    = "virtualisation"
+    env    = var.env
     owner  = var.binome
     projet = var.projet
   }
@@ -11,30 +11,32 @@ resource "azurerm_resource_group" "rg_nimbus" {
 
 resource "azurerm_virtual_network" "vnet" {
   name                = "vnet-nimbus-${var.binome}"
-  address_space       = ["10.${var.binome}.0.0/16"]
+  address_space       = ["10.${var.numgroupe}.0.0/16"]
   location            = azurerm_resource_group.rg_nimbus.location
   resource_group_name = azurerm_resource_group.rg_nimbus.name
+  tags                = azurerm_resource_group.rg_nimbus.tags
 }
 
 resource "azurerm_subnet" "web" {
-  name                 = "snet-web-${var.binome}"
+  name                 = "snet-nimbus-${var.binome}-web"
   resource_group_name  = azurerm_resource_group.rg_nimbus.name
   virtual_network_name = azurerm_virtual_network.vnet.name
-  address_prefixes     = ["10.${var.binome}.1.0/24"]
+  address_prefixes     = ["10.${var.numgroupe}.1.0/24"]
 }
 
 resource "azurerm_subnet" "admin" {
-  name                 = "snet-admin-${var.binome}"
+  name                 = "snet-nimbus-${var.binome}-admin"
   resource_group_name  = azurerm_resource_group.rg_nimbus.name
   virtual_network_name = azurerm_virtual_network.vnet.name
-  address_prefixes     = ["10.${var.binome}.2.0/24"]
+  address_prefixes     = ["10.${var.numgroupe}.2.0/24"]
 }
 
 
 resource "azurerm_network_security_group" "web" {
-  name                = "nsg-web-${var.binome}"
+  name                = "nsg-nimbus-${var.binome}-web"
   location            = azurerm_resource_group.rg_nimbus.location
   resource_group_name = azurerm_resource_group.rg_nimbus.name
+  tags                = azurerm_resource_group.rg_nimbus.tags
   security_rule {
     name                       = "Allow-HTTP"
     priority                   = 100
@@ -70,14 +72,15 @@ resource "azurerm_linux_virtual_machine" "vm" {
   resource_group_name             = azurerm_resource_group.rg_nimbus.name
   location                        = azurerm_resource_group.rg_nimbus.location
   size                            = var.taille_vm
-  admin_username                  = "malek"
+  admin_username                  = var.admin_username
   network_interface_ids           = [azurerm_network_interface.web[count.index].id]
   disable_password_authentication = true
   custom_data                     = filebase64("${path.module}/cloud-init.yaml")
+  tags                            = azurerm_resource_group.rg_nimbus.tags
 
   admin_ssh_key {
-    username   = "malek"
-    public_key = var.admin_ssh_public_key
+    username   = var.admin_username
+    public_key = file(pathexpand(var.ssh_public_key_path))
   }
 
   os_disk {
@@ -94,9 +97,10 @@ resource "azurerm_linux_virtual_machine" "vm" {
 
 resource "azurerm_network_interface" "web" {
   count               = 2
-  name                = "nic-web-${var.binome}-${count.index + 1}"
+  name                = "nic-nimbus-${var.binome}-web-${count.index + 1}"
   location            = azurerm_resource_group.rg_nimbus.location
   resource_group_name = azurerm_resource_group.rg_nimbus.name
+  tags                = azurerm_resource_group.rg_nimbus.tags
 
   ip_configuration {
     name                          = "internal"

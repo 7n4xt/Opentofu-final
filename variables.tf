@@ -7,19 +7,40 @@ variable "binome" {
   type        = string
   description = "Votre nom de binôme"
 }
+variable "numgroupe" {
+  type        = number
+  description = "Numéro de groupe utilisé comme deuxième octet du réseau 10.numgroupe.0.0/16."
+
+  validation {
+    condition     = var.numgroupe >= 0 && var.numgroupe <= 255 && floor(var.numgroupe) == var.numgroupe
+    error_message = "Le numéro de groupe doit être un entier entre 0 et 255."
+  }
+}
 variable "region" {
-  type    = string
-  default = "spaincentral"
+  type        = string
+  description = "Région Azure retenue lors du TP."
+  default     = "spaincentral"
 }
 variable "projet" {
   type        = string
   description = "Nom du projet"
 }
 variable "taille_vm" {
-  type    = string
-  default = "Standard_B2ats_v2"
-}
-variable "admin_ssh_public_key" {
   type        = string
-  description = "Clé publique SSH pour l'utilisateur malek des VM web (jamais la clé privée)."
+  description = "Taille des VM retenue lors du TP Azure."
+  default     = "Standard_B2ats_v2"
+}
+variable "env" {
+  type        = string
+  description = "Environnement utilisé dans le tag env."
+  default     = "tp"
+}
+variable "admin_username" {
+  type        = string
+  description = "Nom du compte administrateur des VM."
+  default     = "azureuser"
+}
+variable "ssh_public_key_path" {
+  type        = string
+  description = "Chemin local de la clé publique SSH (.pub), jamais de la clé privée."
 }

@@ -1,0 +1,9 @@
+subscription_id     = "00000000-0000-0000-0000-000000000000"
+binome              = "equipe"
+numgroupe           = 7
+region              = "spaincentral"
+projet              = "NimbusShop"
+env                 = "tp"
+taille_vm           = "Standard_B2ats_v2"
+admin_username      = "azureuser"
+ssh_public_key_path = "~/.ssh/id_ed25519.pub"
